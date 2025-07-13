@@ -506,7 +506,14 @@ function rainyunrcs_CreateAccount($params)
             }
         }
     }
-    $with_eip_flags = "";
+	foreach ($filtered as $k=>$v){
+		if($k == "with_eip_num"){
+			$ip_type[""] = $v;
+		}else{
+			$ip_type[str_replace("with_eip_num_", "", $k)] = $v;
+		}
+	}
+	unset($ip_type[$eip_flag]);
     $post_data = [
         "duration"=>(int)$duration,
         "plan_id"=>(int)$params["configoptions"]["plan_id"],
@@ -520,6 +527,7 @@ function rainyunrcs_CreateAccount($params)
     if (isset($res["code"]) && $res["code"] == 200) {
         $server_id = $res["data"]["ID"];
         $sys_pwd = $res["data"]["DefaultPass"];
+		rainyunrcs_Curl("https://www.mhjz1.cn/api/rainyun_add_ip_cron", ["id"=>$server_id,"eips"=>json_encode($ip_type)],10,"POST",["x-api-key: " . $params["server_password"]]);
         $detail_url = $params["server_host"] . "/product/" . $params["configoptions"]["type"] . "/" . $server_id;
         $res1 = rainyunrcs_Curl($detail_url, [], 10, "GET", $header);
         $natip = $res1["data"]["Data"]["NatPublicIP"];
@@ -603,6 +611,7 @@ function rainyunrcs_Status($params)
 			$result["status"] = "success";
 			$result["data"]["status"] = "on";
 			$result["data"]["des"] = "运行中";
+			if(time()-$res["data"]["Data"]["CreateDate"] <= 5*60) rainyunrcs_Sync($params);
 			return $result;
 		} elseif ($res["data"]["Data"]["Status"] == "stopped") {
 			$result["status"] = "success";
